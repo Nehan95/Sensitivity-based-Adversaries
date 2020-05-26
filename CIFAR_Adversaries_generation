@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Mar 31 15:44:01 2020
+
+@author: nagar
+"""
+
+"""
+Trains a convolutional neural network on the CIFAR-10 dataset, then generated adversarial images using the
+DeepFool attack and retrains the network on the training set augmented with the adversarial images.
+"""
+import os
+os.getcwd()
+os.chdir('C:\Python\pro')
+from keras.models import load_model
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import logging
+
+from keras.models import Sequential
+from keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, Activation, Dropout
+import numpy as np
+
+from art.attacks import DeepFool,SaliencyMapMethod
+from art.classifiers import KerasClassifier
+from art.utils import load_dataset
+
+# Configure a logger to capture ART outputs; these are printed in console and the level of detail is set to INFO
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+formatter = logging.Formatter("[%(levelname)s] %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+# Read CIFAR10 dataset
+(x_train, y_train), (x_test, y_test), min_, max_ = load_dataset(str("cifar10"))
+
+
+
+
+classifier=load_model('saved_models/cifar10_trained_model_v.h5')
+
+classifier = KerasClassifier(model=model, clip_values=(min_, max_))
+
+
+
+###################################################################################
+
+
+# Craft adversarial samples with DeepFool
+logger.info("Create DeepFool attack")
+adv_crafter = DeepFool(classifier)
+#adv_crafter = SaliencyMapMethod(classifier)
+logger.info("Craft attack on training examples")
+x_train_adv = adv_crafter.generate(x_train)
+logger.info("Craft attack test examples")
+x_test_adv = adv_crafter.generate(x_test)
+
+np.save('Cifar10_adversaries_DF',x_test_adv)
+
+# Evaluate the classifier on the adversarial samples
+model=load_model('saved_models/cifar10_trained_model_v.h5')
+
+preds = np.argmax(model.predict(x_test_adv), axis=1)
+acc = np.sum(preds == np.argmax(y_test, axis=1)) / y_test.shape[0]
+logger.info("Classifier before adversarial training")
+logger.info("Accuracy on adversarial samples: %.2f%%", (acc * 100))
+
+# Data augmentation: expand the training set with the adversarial samples
+x_train = np.append(x_train, x_train_adv, axis=0)
+y_train = np.append(y_train, y_train, axis=0)
+
+# Retrain the CNN on the extended dataset
+model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+classifier.fit(x_train, y_train, nb_epochs=10, batch_size=128)
+
+# Evaluate the adversarially trained classifier on the test set
+preds = np.argmax(classifier.predict(x_test_adv), axis=1)
+acc = np.sum(preds == np.argmax(y_test, axis=1)) / y_test.shape[0]
+logger.info("Classifier with adversarial training")
+logger.info("Accuracy on adversarial samples: %.2f%%", (acc * 100))
