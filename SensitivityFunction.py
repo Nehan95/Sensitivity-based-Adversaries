@@ -8,12 +8,26 @@ from sensitivity_analysis import sigmoid
 import pandas as pd
 
 def sensitive_neuron(inpt,w,b,y):
-    a1=[]
-    a2=[]
-    a3=[]
-    z1=[]
-    z2=[]
-    z3=[]
+    '''
+    
+    Parameters
+    ----------
+    inpt : 2-dimensional array
+        This is the input provided to network.
+    w : 2-dimensional array
+        Weight matrix obtained after training the network for the entire network.
+    b : 2-dimensional array
+        Bias matrix obtained after training the network for the entire network.
+    y : 1-dimensional array
+        The desired output vector for given input.
+
+    Returns
+    -------
+    neuron : int
+        The index of neuron from input layer (1st layer) which is most sensitive to given input.
+
+    '''
+    a1,a2,a3,z1,z2,z3=[],[],[],[],[],[]
     for i in range(len(b[0])):
         z=sum(inpt*w[0][:,i])+b[0][i]
         z1.append(z)
@@ -30,42 +44,16 @@ def sensitive_neuron(inpt,w,b,y):
         a=sigmoid.sigmoid(z)
         a3.append(a)
     e=sum(y-a3)
-    d1=[]
-    d3=[]
-    d5=[]
-    d2=[]
-    d4=[]
-    d6=[]
-    for i in range(len(a3)):
-        d=sigmoid.sigmoid_prime(z3[i])
-        d1.append(d)
-    for i in range(len(a2)):
-        d=sigmoid.sigmoid_prime(z2[i])
-        d3.append(d)
-    for i in range(len(a1)):
-        d=sigmoid.sigmoid_prime(z1[i])
-        d5.append(d)
-    for i in range(len(z3)):
-        d=sum(w[2][i,:])
-        d2.append(d)
-    for i in range(len(z2)):
-        d=sum(w[1][i,:])
-        d4.append(d)
-    for i in range(len(z1)):
-        d=sum(w[0][i,:])
-        d6.append(d)
-    p1=[]
-    p2=[]
-    p3=[]
-    for i in range(len(d1)):
-        p=e*d1[i]*d2[i]
-        p1.append(p)
-    for i in range(len(d3)):
-        p=d3[i]*d4[i]
-        p2.append(p)
-    for i in range(len(d5)):
-        p=d5[i]*d6[i]
-        p3.append(p)
+    d1=[sigmoid.sigmoid_prime(z3[i]) for i in range(len(a3))]
+    d2=[sum(w[2][i,:]) for i in range(len(z3))]
+    d3=[sigmoid.sigmoid_prime(z2[i]) for i in range(len(a2))]
+    d4=[sum(w[1][i,:]) for i in range(len(z2))]
+    d5=[sigmoid.sigmoid_prime(z1[i]) for i in range(len(a1))]
+    d6=[sum(w[0][i,:]) for i in range(len(z1))]
+    p1,p2,p3=[],[],[]
+    p1=[e*d1[i]*d2[i] for i in range(len(d1))]
+    p2=[d3[i]*d4[i] for i in range(len(d3))]
+    p3=[d5[i]*d6[i] for i in range(len(d5))]
     l=[]
     row={}
     row['p1']=0.0
@@ -90,6 +78,24 @@ def sensitive_neuron(inpt,w,b,y):
 
 
 def image_pixels(inpt,wt,n):
+    '''
+    
+
+    Parameters
+    ----------
+    inpt : 2-dimensional array
+        This is the input provided to network.
+    wt : 2-dimensional array
+        The weight matrix corresponding to the most sensitive neuron of the input layer.
+    n : int
+        The number of pixels to nullify.
+
+    Returns
+    -------
+    inpt : 2-dimensional array
+        This is the modified input which should be provided to a trained network.
+
+    '''
     prod=inpt*wt
     dat=pd.DataFrame()
     dat['prod']=list(prod)
